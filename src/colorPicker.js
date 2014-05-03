@@ -1,4 +1,3 @@
-onLoad();
 
 function onLoad() {
 	var el = document.body
