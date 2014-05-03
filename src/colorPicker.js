@@ -1,4 +1,5 @@
 onLoad();
+
 function onLoad() {
 	var el = document.body
 	if (el != null && typeof(el) != "undefined")
