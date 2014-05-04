@@ -1,4 +1,4 @@
-Color Picker.js
+Color Picker.js HSV / HSB
 	
 color picker uses only javascript
 	
