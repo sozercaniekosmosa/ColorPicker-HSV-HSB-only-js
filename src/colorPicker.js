@@ -13,17 +13,22 @@ function onLoad() {
 function colorPicker(){
 
 	var srf, cpButton;
-	var colorPickerArrButton = document.getElementsByClassName('colorPick');
-	for( var i=0; i<colorPickerArrButton.length; i++)
+	var colorPickerArrButton = document.getElementsByClassName('colorPicker');
+	for( var i=0; i<colorPickerArrButton.length; i++){
 		colorPickerArrButton[i].addEventListener('click', function (e) {
 			cpButton = e.target;
 			createColorPicker();
 			if(srf !== undefined) srf.style.display = 'block';
 		});
+		cpButton = colorPickerArrButton[i];
+		createColorPicker();
+	}
 
 	function createColorPicker(){
 
 		var bgColor = cpButton.getAttribute('bgColor');
+
+		var hsvText = cpButton.getAttribute('hsvText');
 
 		var colorAttr = cpButton.getAttribute('value');
 		var widthAttr = parseInt(cpButton.getAttribute('cpWidth'));
@@ -31,6 +36,9 @@ function colorPicker(){
 
 		var xAttr = parseInt(cpButton.getAttribute('cpX'));
 		var yAttr = parseInt(cpButton.getAttribute('cpY'));
+
+		var xOffAttr = parseInt(cpButton.getAttribute('cpXOff'));
+		var yOffAttr = parseInt(cpButton.getAttribute('cpYOff'));
 
 		var width = !widthAttr ?100:widthAttr;
 		var height = !heightAttr ?100:heightAttr;
@@ -53,6 +61,9 @@ function colorPicker(){
 		var cpX = !xAttr ?pos.x:xAttr;
 		var cpY = !yAttr ?pos.y:yAttr;
 
+		cpX += !xOffAttr?0:xOffAttr;
+		cpY += !yOffAttr?0:yOffAttr;
+
 		var HUE = hsv.h;
 		var S = hsv.s;
 		var V = hsv.v;
@@ -67,12 +78,13 @@ function colorPicker(){
 		var sdw = '2px 2px 3px rgba(0,0,0,.2), 10px 10px 40px rgba(0,0,0,.1)';
 
 		srf = createNode('div', 'srf', {
-			position: 'absolute',
-			left:     cpX + 'px',
-			top:      cpY + 'px',
-			'-webkit-user-select': 'none',
-			cursor: 'default',
-			zIndex:   16777271
+			display:               'none',
+			position:              'absolute',
+			left:                  cpX + 'px',
+			top:                   cpY + 'px',
+			cursor:                'default',
+			zIndex:                16777271,
+			'-webkit-user-select': 'none'
 		});
 
 		var cnvSV = createNode('canvas', 'cnvSV', {
@@ -106,17 +118,18 @@ function colorPicker(){
 		});
 
 		var inputColor = createNode('input', 'inputColor', {
-			fontFamily: 'monospace',
-			margin:     '0',
-			padding:    '0',
-			position:   'absolute',
-			border:     '1px solid black',
-			width:      wSV + 'px',
-			height:     wH + 'px',
-			top:        hSV + 2 + 'px',
-			left:       '0px',
-			textAlign:  'center',
-			boxShadow:  sdw
+			fontFamily:            'monospace',
+			margin:                '0',
+			padding:               '0',
+			position:              'absolute',
+			border:                '1px solid black',
+			width:                 wSV + 'px',
+			height:                wH + 'px',
+			top:                   hSV + 2 + 'px',
+			left:                  '0px',
+			textAlign:             'center',
+			boxShadow:             sdw,
+			'-webkit-user-select': 'none'
 		}, {
 			readOnly: 1
 		});
@@ -157,12 +170,21 @@ function colorPicker(){
 		srf.appendChild(xSV);
 		srf.appendChild(xH);
 
+		update();
+
 		inputColor.onclick = function () {
 			inputColor.readOnly = 0;
 		};
 		inputColor.onfocus = function () {
 			onFocusText = 1;
 		};
+
+		inputColor.onblur = function () {
+			onFocusText = 0;
+			inputColor.readOnly = 1;
+			textToColor();
+		};
+
 		document.onkeydown = function (e) {
 			if (e.keyCode === 13) {
 				if (onFocusText == 0) {
@@ -176,16 +198,19 @@ function colorPicker(){
 				textToColor();
 				update();
 			}
-		};
-
-		inputColor.onblur = function () {
-			onFocusText = 0;
-			inputColor.readOnly = 1;
-			textToColor();
+			if (e.keyCode === 27) {
+				clickOutsideColorPicker = 1;
+				clickSV = 0;
+				clickH = 0;
+				clickText = 0;
+				update();
+			}
 		};
 
 		cnvSV.onmousedown = function () {
 			clickSV = 1;
+			onFocusText = 0;
+			inputColor.readOnly = 1;
 		};
 
 		cnvH.onmousedown = function () {
@@ -263,11 +288,22 @@ function colorPicker(){
 
 			var rgb = hsv_rgb(HUE, S, V);
 
-			sampleColor.style.backgroundColor = 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')';
-			if(bgColor !== null) cpButton.style.backgroundColor = 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')';
-			var color = '#' + cap(rgb.r.toString(16)) + cap(rgb.g.toString(16)) + cap(rgb.b.toString(16));
+			var color = rgbToString(rgb);
 			cpButton.setAttribute('value', color);
-			if (!onFocusText) inputColor.value = color;
+			if (!onFocusText) inputColor.value = (hsvText === null)?color:'hsv('+parseInt(HUE)+','+parseInt(S)+','+parseInt(V)+')';
+			sampleColor.style.backgroundColor = color;
+			if(bgColor !== null){
+				var VT = (V < 70) ? 100 : 0;
+				VT = (S>35) ? 100 : VT;
+				VT = (V>79)&&(S>35)&&(HUE>36)&&(HUE<196) ? 0 : VT;
+
+				cpButton.style.color = rgbToString( hsv_rgb(0, 0, VT) );
+				cpButton.style.backgroundColor = color;
+			}
+		}
+
+		function rgbToString(rgb){
+			return '#' + cap(rgb.r.toString(16)) + cap(rgb.g.toString(16)) + cap(rgb.b.toString(16));
 		}
 
 		function setStyle(node, style){
@@ -342,8 +378,7 @@ function colorPicker(){
 				S = hsv.s;
 				V = hsv.v;
 			} catch (e) {
-				var rgb = hsv_rgb(HUE, S, V);
-				inputColor.value = '#' + cap(rgb.r.toString(16)) + cap(rgb.g.toString(16)) + cap(rgb.b.toString(16));
+				inputColor.value = rgbToString(hsv_rgb(HUE, S, V));
 			}
 		}
 
@@ -387,6 +422,9 @@ function colorPicker(){
 
 		function getAutoPositionColorPicker( node) {
 
+			var hPg = document.documentElement.scrollHeight ? document.documentElement.scrollHeight : document.body.scrollHeight;
+			var wPg = document.documentElement.scrollWidth ? document.documentElement.scrollWidth : document.body.scrollWidth;
+
 			var buttonDmn = getOffset(node);
 
 			buttonDmn.h = node.offsetHeight;
@@ -400,8 +438,8 @@ function colorPicker(){
 			if (pos.x < 0) pos.x = 0;
 			if (pos.y < 0) pos.y = 0;
 
-			if ((pos.x + width) > window.innerWidth) pos.x = window.innerWidth - width;
-			if ((pos.y + height) > window.innerHeight) pos.y = window.innerHeight - height;
+			if ((pos.x + width) > wPg) pos.x = wPg - width;
+			if ((pos.y + height) > hPg) pos.y = hPg - height;
 
 			if (pos.y < buttonDmn.y) pos.y = buttonDmn.y - height;
 
